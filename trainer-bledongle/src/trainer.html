@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<html>
+<head>
+  <title>ESP32 Trainer Test</title>
+  <meta name="description" content="test websockets with esp32 dongle">
+
+
+  
+  <script>
+
+  var connection;
+  var connStatus;
+  var infoTxt;
+  var resistanceValue;
+
+  // the actual values from BLE
+  var bikeDataPower;
+  var bikeDataCadence;
+  var bikeDataElapsedTime;
+  var bikeDataPedalBalance;
+  // the text fields on the html page
+  var bikeDataPowerTxt;
+  var bikeDataCadenceTxt;
+  var bikeDataElapsedTimeTxt;
+  var bikeDataPedalBalanceTxt;
+  
+  function onBodyLoad() {
+    infoTxt = document.getElementById("info");
+    resistanceValueInput = document.getElementById("resistanceValue");
+    bikeDataPowerTxt = document.getElementById("bikeDataPower");
+    bikeDataCadenceTxt = document.getElementById("bikeDataCadence");
+    bikeDataElapsedTimeTxt = document.getElementById("bikeDataElapsedTime");
+    bikeDataPedalBalanceTxt = document.getElementById("bikeDataPedalBalance");
+    connStatus = document.getElementById("connStatus");
+    connStatus.innerHTML = "--";
+    
+    //connection = new WebSocket('ws://esp32dongle.local:81/',['arduino']);
+  } // onBodyLoad
+
+  function connectWebSocket() {
+    //connection = new WebSocket('ws://192.168.1.30:81/',['arduino']);
+    //connection = new WebSocket('ws://esp32dongle.local:81/',['arduino']);
+    connection = new WebSocket('ws://esp32dongle:81/',['arduino']);
+    //connection = new WebSocket('ws://espressif:81/',['arduino']);
+    //connection = new WebSocket('ws://espressif.local:81/',['arduino']);
+    connection.onmessage = onMessage;
+    connection.onopen = onOpen;
+    connection.onerror = onError;
+    connection.onclose = onClose;
+  } // connectWebSocket
+
+  function onOpen() {
+    console.log("websocket connection open!");
+    infoTxt.innerHTML += "websocket connection open!<br>";
+    connStatus.innerHTML = "open";
+  } // onOpen
+
+  function onError(error) {
+    connStatus.innerHTML = "error";
+    infoTxt.innerHTML += "websocket error" + error + "<br>";
+    console.log("websocket error!");
+  } // onError
+  
+  function onClose(e) {
+    connStatus.innerHTML = "closed";
+    infoTxt.innerHTML += "websocket closed with code : " + e.code + "<br>";
+    console.log("websocket closed with code : " + e.code);
+  } // onClose
+  
+  function onMessage(e) {
+    console.log('Server sent : ', e.data);
+    //infoTxt.innerHTML += "received : " + e.data + "<br>";
+    // data are in json format
+    var json = JSON.parse(e.data);
+    bikeDataPower = json.data.pow;
+    bikeDataCadence = json.data.cad;
+    bikeDataElapsedTime = json.data.elTim;
+    bikeDataPedalBalance = json.data.bal;
+    
+    // update the page
+    bikeDataPowerTxt.innerHTML = bikeDataPower;
+    bikeDataCadenceTxt.innerHTML = bikeDataCadence;
+    bikeDataElapsedTimeTxt.innerHTML = bikeDataElapsedTime;
+    bikeDataPedalBalanceTxt.innerHTML = bikeDataPedalBalance;
+  } // onMessage
+  
+  function wsCmdChangeResistance() {
+    var jsonData = { event : "cmd",
+                     cmd : {RESISTANCE : resistanceValueInput.value}
+                   };
+    console.log (JSON.stringify(jsonData));
+    if (connection.readyState == 1) {//open
+      connection.send(JSON.stringify(jsonData));
+    }
+    else {
+    infoTxt.innerHTML += "cannot send, connection.readyState = " + connection.readyState + "<br>";
+    }
+  }
+  function wsCmdStart() {
+    var jsonData = { event : "cmd",
+                     cmd : {"START" : 1}
+                   };
+    console.log (JSON.stringify(jsonData));
+    if (connection.readyState == 1) {//open
+      connection.send(JSON.stringify(jsonData));
+    }
+    else {
+    infoTxt.innerHTML += "cannot send, connection.readyState = " + connection.readyState + "<br>";
+    }
+  }
+  function wsCmdStop() {
+    var jsonData = { event : "cmd",
+                     cmd : {"STOP" : 1}
+                   };
+    console.log (JSON.stringify(jsonData));
+    if (connection.readyState == 1) {//open
+      connection.send(JSON.stringify(jsonData));
+    }
+    else {
+    infoTxt.innerHTML += "cannot send, connection.readyState = " + connection.readyState + "<br>";
+    }
+  }
+
+  function disconnectWebSocket() {
+    connection.close();
+  }
+  </script>
+
+</head>
+<body onload="onBodyLoad()">
+
+  <button id="connect" onclick="connectWebSocket()">Connect</button>
+  <button id="disconnect" onclick="disconnectWebSocket()">Disconnect</button>
+  <p>Connection status : <span id="connStatus"> </span></p>
+  <p id="info">info:</p>
+
+
+  <p> Power : <span id=bikeDataPower> -- </span></p>
+  <p> Cadence : <span id=bikeDataCadence> -- </span></p>
+  <p> Elapsed Time : <span id=bikeDataElapsedTime> -- </span></p>
+  <p> Pedal Balance : <span id=bikeDataPedalBalance> -- </span></p>
+  <button id="start" onclick="wsCmdStart()">Start</button>
+  <button id="stop" onclick="wsCmdStop()">Stop</button>
+  <input type="number" id="resistanceValue" value="50"> 
+  <button id="changeResistance" onclick="wsCmdChangeResistance()">Change Resistance</button>
+
+</body>
+
+</html>
